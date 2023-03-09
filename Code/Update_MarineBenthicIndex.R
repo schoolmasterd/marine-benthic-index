@@ -4,7 +4,7 @@
 
 #set path to folders
 #this sets path to the current parent directory of this script
-path<-"/Volumes/Ratatoskr/Work/PugetSound/Development/Puget_Sound_MBI/ModelUpdate/"
+path<-"your/path/to/Puget_Sound_MBI/"
 setwd(path)
 
 #read in Habitat Data make sure the file names match those

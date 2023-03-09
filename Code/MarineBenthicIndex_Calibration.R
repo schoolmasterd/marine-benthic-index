@@ -9,7 +9,8 @@ library(reshape2)
 
 ##load data##
 
-#this sets path to the current parent directory of this script
+path<-"your/path/to/Puget_Sound_MBI/"
+setwd(path)
 
 
 #load species data#
