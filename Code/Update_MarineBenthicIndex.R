@@ -3,9 +3,11 @@
 #the updated D scores, with and without prior will appear in the /Output folder
 
 #set path to folders
-#this sets path to the current parent directory of this script
-path<-"your/path/to/Puget_Sound_MBI/"
-setwd(path)
+#This is be done automatically by starting RStudio by double clicking the Puget_Sound_MBI.Rproj
+#otherwise uncomment, update and run the following 2 lines.
+#path<-"your/path/to/Puget_Sound_MBI/"
+#setwd(path)
+
 
 #read in Habitat Data make sure the file names match those
 # in the /Data folder 

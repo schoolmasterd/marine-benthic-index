@@ -9,8 +9,10 @@ library(reshape2)
 
 ##load data##
 
-path<-"your/path/to/Puget_Sound_MBI/"
-setwd(path)
+#This is be done automatically by starting RStudio by double clicking the Puget_Sound_MBI.Rproj
+#otherwise uncomment, update and run the following 2 lines.
+#path<-"your/path/to/Puget_Sound_MBI/"
+#setwd(path)
 
 
 #load species data#
