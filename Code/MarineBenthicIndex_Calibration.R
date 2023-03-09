@@ -5,14 +5,12 @@
 library(glmnet)
 library(lavaan)
 library(reshape2)
-library(here)
+
 
 ##load data##
 
 #this sets path to the current parent directory of this script
-path<-here()
-path<-gsub(pattern = "Code",replacement = "",path)
-setwd(path)
+
 
 #load species data#
 df<-read.csv("Data/habitat and TOC and species abundances for Long-term 2017 and 2018 samples.csv")
@@ -164,19 +162,19 @@ d_ans<-data.frame(Sample=rownames(res),est=sapply(D_ests,"[",1),se=sapply(D_ests
 sp_coefs<-sapply(nms,function(x)as.vector(coef(fts[[x]],s=lambda_min[x])))
 rownames(sp_coefs)<-(coef(fts[[1]])@Dimnames[[1]])
 
-write.csv(x = data.frame(Parameter=rownames(sp_coefs),sp_coefs),file = "../ModelUpdate/Data/Model/TaxaCoefficients.csv",row.names = F)
+write.csv(x = data.frame(Parameter=rownames(sp_coefs),sp_coefs),file = "Data/Model/TaxaCoefficients.csv",row.names = F)
 
 #alphas
-write.csv(alphas,"../ModelUpdate/Data/Model/alphas_calibration.csv",row.names = F)
+write.csv(alphas,"Data/Model/alphas_calibration.csv",row.names = F)
 
 #Means for the carbonation continuous E var
 col_mod_vars<-c(col_means_mod_vars[1:4],Fines=coef(f),col_means_mod_vars[6:7])
 col_mod_vars<-as.matrix(t(col_mod_vars))
 
-write.csv(col_mod_vars,"../ModelUpdate/Data/Model/E_calibration_means.csv",row.names = F)
+write.csv(col_mod_vars,"Data/Model/E_calibration_means.csv",row.names = F)
 
 #prior to output folder and model data/model folder for update
-write.csv(d_ans,"../ModelUpdate/Data/Model/D_ScoresPriors.csv",row.names = F)
+write.csv(d_ans,"Data/Model/D_ScoresPriors.csv",row.names = F)
 write.csv(d_ans,paste0("Output/D_Scores",Sys.Date(),".csv"),row.names = F)
 
 
