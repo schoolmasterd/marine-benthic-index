@@ -34,6 +34,7 @@ dindex_mkr<-function(data,main=""){
 }
 
 alpha_mkr<-function(data,main=""){
+  nsp=dim(data)[1]
   ord=order(data$est)
   par(mar=c(5,8,2,2))
   plot(data$est[ord],1:nsp,yaxt="n",ylab = "",xlab="",pch=21,bg="gray",xlim=c(-.3,.4))
