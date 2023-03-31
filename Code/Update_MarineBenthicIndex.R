@@ -54,7 +54,6 @@ rownames(res_new)<-df_test$Sample
 #setup data for calc
 i<-nms[1]
 fmls<-paste0(i,'~Depth_x+Penetration_x+Salinity_x+Temperature_x+Fines_x+Gravel_x+InorgC_x+Salinity_x:Temperature_x')
-dim()
 x<-model.matrix(formula(fmls),data = df_test)[,-1]
 
 #test data structure
