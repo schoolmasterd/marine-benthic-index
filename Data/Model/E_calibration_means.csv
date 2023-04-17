@@ -1,2 +1,2 @@
-"Depth","Penetration","Salinity","Temperature","Fines.(Intercept)","Fines.sqrt(df$Sed_TOC)","Gravel","InorgC"
-69.0970779220779,12.2211038961039,28.3701298701299,9.40746753246752,-4.096242336319,4.15709559056731,2.48506493506494,0.145766233766234
+"Depth","Penetration","Salinity","Temperature","Fines.(Intercept)","Fines.sqrt(df$Sed_TOC)","Gravel"
+106.4095,18.8205,43.69,14.4875,-3.88263938280131,3.808629886817,3.827

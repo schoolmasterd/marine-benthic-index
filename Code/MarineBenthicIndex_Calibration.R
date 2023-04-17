@@ -11,22 +11,31 @@ library(reshape2)
 
 #This is be done automatically by starting RStudio by double clicking the Puget_Sound_MBI.Rproj
 #otherwise uncomment, update and run the following 2 lines.
-#path<-"your/path/to/Puget_Sound_MBI/"
-#setwd(path)
+path<-"your/path/to/Puget_Sound_MBI/"
+setwd(path)
 
 
 #load species data#
 df<-read.csv("Data/habitat and TOC and species abundances for Long-term 2017 and 2018 samples.csv")
 #grab species data
 names(df)
-sp_dat<-df[,14:dim(df)[2]]
+#Look at column names for data set and find where the first taxon data column is
+sp_start<-14
+#grab just the taxa and turn them into pres/abs
+sp_dat<-df[,sp_start:dim(df)[2]]
 names(sp_dat)
 sp_dat[sp_dat>0]<-1
+#check to make sure
 apply(sp_dat,2,max)
 ###assemble training data set
-#remove any taxa with 10 or fewer occurrences across all observations
-dim(df[which(df$Replicate>1),1:3])
+#set weights for replicated stations within year
+who<-which(table(df$Station,df$Year)[,1]>1)
+train_weights<-rep(1,dim(df)[1])
+train_weights[df$Station%in%names(who)&df$Year==2017]<-1/3
+#check them
+data.frame(df[,1:4],train_weights)
 
+#remove any taxa with 10 or fewer occurrences across all observations
 names(df)
 
 occs<-apply(sp_dat,2,sum)
@@ -43,43 +52,48 @@ dim(sp_dat)
 #get the names of those remaining
 sp_nms<-names(sp_dat)
 
+#look at the column names of df and grab the id vars and all the var we want in E
+#in this case these are in columns 1-12
 df_test<-data.frame(df[,1:12],sp_dat)
+
 #linearize the relationshiop between sed_TOC and Fines
 #plot(log((df_test$Fines/100)/(1-df_test$Fines/100))~sqrt(df$Sed_TOC))
 #cor(log((df_test$Fines/100)/(1-df_test$Fines/100)),sqrt(df$Sed_TOC))
-f<-lm((log((df_test$Fines/100)/(1-df_test$Fines/100))~sqrt(df$Sed_TOC)))
+f<-lm((log((df_test$Fines/100)/(1-df_test$Fines/100))~sqrt(df$Sed_TOC)),weights = train_weights)
 
 #use this to replace fines in the E data
 df$Fines<-resid(f)
 
 
+#re-scale continuous environmental var to have zero mean
+#grab the vars for E
+evars<-c("Depth","Penetration","Salinity","Temperature","Fines","Gravel")
+env_vars<-df[,evars]
+#center them and keep the value used to center each
 
-#rescale continuous environmental var to have zero mean
-env_vars<-df[,6:12]
-col_means_mod_vars<-colMeans(env_vars)
+col_means_mod_vars<-apply(env_vars,2,sum)*1/sum(train_weights)
 col_sd_mod_vars<-apply(env_vars,2,sd)
-env_vars<-sweep(env_vars,2,colMeans(env_vars),FUN = "-")
+env_vars<-sweep(env_vars,2,col_means_mod_vars,FUN = "-")
 #env_vars<-sweep(env_vars,2,col_sd_mod_vars,FUN = "/")
-apply(env_vars,2,sd)
+apply(env_vars,2,mean)
 
 
 df_test<-data.frame(df[,"Sample"],env_vars,sp_dat)
 head(df_test)
 
-# fit taxa models using lasso regularization and cross-validatation to select "lambda" parameter
+# fit taxa models using lasso regularization and cross-validation to select "lambda" parameter
 fts<-list()
 lambda_min<-rep(NA,length(sp_nms))
 names(lambda_min)<-sp_nms
-
 
 for(i in sp_nms){
   fmls<-paste0(i,paste0("~",paste0(names(env_vars),collapse = "+")))
   fmls<-paste0(fmls,'+Salinity:Temperature')
   x<-model.matrix(formula(fmls),data = df_test)[,-1]
   y<-df_test[,i]
-  tryCatch({cv.lasso<-glmnet::cv.glmnet(x,y,alpha=1,nfolds = dim(x)[1], family="binomial",grouped = F)},warning=function(w)print(i))
+  tryCatch({cv.lasso<-glmnet::cv.glmnet(x,y,alpha=1,nfolds = dim(x)[1], family="binomial",grouped = F,weights = train_weights)},warning=function(w)print(i))
   lambda_min[i]<-cv.lasso$lambda.min
-  tryCatch({fts[[i]]<-glmnet::glmnet(x,y,alpha=1,family = "binomial", lambda = cv.lasso$lambda,type.logistic = "modified.Newton")},warning=function(w)print(i))
+  tryCatch({fts[[i]]<-glmnet::glmnet(x,y,alpha=1,family = "binomial", lambda = cv.lasso$lambda,type.logistic = "modified.Newton",weights = train_weights)},warning=function(w)print(i))
 }
 
 #calc percent deviance
@@ -99,6 +113,7 @@ c("Leitoscoloplos_pugettensis",
 hist(pct_deviance[nms])
 #how many did we end up with?
 nms<-unique(nms)
+length(nms)
 
 #cleanup column name for first column
 names(df_test)[1]<-"Sample"
@@ -122,7 +137,7 @@ for(i in nms){
 
 ####set up SEM to calculate D and alphas####
 #check our the distribution of residuals if any ar crazy high (or low) with
-#might deal with those separtely to preserve our assumption of species correlation 
+#might deal with those separately to preserve our assumption of species correlation 
 # only through common effects of E
 res_cor<-cor(res)
 hist(res_cor)
@@ -171,7 +186,7 @@ write.csv(x = data.frame(Parameter=rownames(sp_coefs),sp_coefs),file = "Data/Mod
 write.csv(alphas,"Data/Model/alphas_calibration.csv",row.names = F)
 
 #Means for the carbonation continuous E var
-col_mod_vars<-c(col_means_mod_vars[1:4],Fines=coef(f),col_means_mod_vars[6:7])
+col_mod_vars<-c(col_means_mod_vars[c("Depth","Penetration","Salinity","Temperature")],Fines=coef(f),col_means_mod_vars["Gravel"])
 col_mod_vars<-as.matrix(t(col_mod_vars))
 
 write.csv(col_mod_vars,"Data/Model/E_calibration_means.csv",row.names = F)

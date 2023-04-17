@@ -6,14 +6,14 @@
 #This is be done automatically by starting RStudio by double clicking the Puget_Sound_MBI.Rproj
 #otherwise uncomment, update and run the following 2 lines.
 #path<-"your/path/to/Puget_Sound_MBI/"
-#setwd(path)
+setwd(path)
 
 
 #read in Habitat Data make sure the file names match those
 # in the /Data folder 
 hab_dat<-read.csv("Data/habitat data for Long-term 2019.csv")
 #read in Benthos Data
-benthos_dat<-read.csv("Data/Long-term 2019 abundances standardized 129.csv")
+benthos_dat<-read.csv("Data/Long-term 2019 abundances standardized.csv")
 
 ##############HIGHLIGHT THE REST OF THE CODE AND RUN IT AS ONE CHUNK ###################
 #read in model values 
@@ -39,8 +39,8 @@ df_test$Fines<-logit_trans(df_test$Fines)-(as.numeric(scale_vars[5])+as.numeric(
 
 
 ###scale test data by calibration data mean and sd
-mod_vars<-df_test[,c("Depth","Penetration","Salinity","Temperature","Fines","Gravel","InorgC")]
-mod_vars<-sweep(mod_vars,MARGIN = 2,STATS = as.numeric(c(scale_vars[1:4],0,scale_vars[7:8])),FUN = "-")
+mod_vars<-df_test[,c("Depth","Penetration","Salinity","Temperature","Fines","Gravel")]
+mod_vars<-sweep(mod_vars,MARGIN = 2,STATS = as.numeric(c(scale_vars[1:4],0,scale_vars[7])),FUN = "-")
 
 names(mod_vars)<-paste0(names(mod_vars),"_x")
 df_test<-data.frame(df_test,mod_vars)
@@ -52,23 +52,24 @@ rownames(res_new)<-df_test$Sample
 
 
 #setup data for calc
-i<-nms[1]
-fmls<-paste0(i,'~Depth_x+Penetration_x+Salinity_x+Temperature_x+Fines_x+Gravel_x+InorgC_x+Salinity_x:Temperature_x')
+i<-"Aricidea_Acmira_lopezi"
+fmls<-paste0(i,'~Depth_x+Penetration_x+Salinity_x+Temperature_x+Fines_x+Gravel_x+Salinity_x:Temperature_x')
 x<-model.matrix(formula(fmls),data = df_test)[,-1]
 
 #test data structure
 all(colnames(x)==sp_coefs[-1,1])
 #calculate residuals
+i<-nms[1]
 for(i in nms){
   pdct<-1/(1+exp(-cbind(rep(1,dim(df_test)[1]),x)%*%sp_coefs[,i]))
   pdct[which(pdct>9.999999e-01)]<-9.999999e-01
+  pdct[which(pdct<1e-06)]<-1e-06
   a<-pbinom(df_test[,i]-1,size = 1,pdct)
   b<-dbinom(df_test[,i],size = 1,pdct)
   tmp_scr<-(2*a+b)/2
   res_new[,i]<-qnorm(tmp_scr,0,1)
-  
-}
-
+  }
+res_new
 
 
 D_ests_new<-list()
