@@ -67,26 +67,28 @@ for(i in nms){
   a<-pbinom(df_test[,i]-1,size = 1,pdct)
   b<-dbinom(df_test[,i],size = 1,pdct)
   tmp_scr<-(2*a+b)/2
-  res_new[,i]<-qnorm(tmp_scr,0,1)
+  res_new[,i]<-qlogis(tmp_scr,0,1)
   }
 res_new
 
 
 D_ests_new<-list()
 for(i in 1:n_sites){
-  ll<-function(x)sum(-log(dnorm(res_new[i,],alphas$int+alphas$est*x[1],x[2])),na.rm = T)
-  f_tem<-optim(c(0,.3),ll,hessian = T)
-  D_ests_new[[i]]<-c(D=f_tem$par[1],se=sqrt(diag(solve(f_tem$hessian)))[1])
-}
+    D_ests_new[[i]]<-glm(res_new[i,]~alphas$est-1,weights = 1/alphas$se^2,family = "gaussian")
+  }
 
-d_new<-data.frame(Sample=rownames(res_new),est=sapply(D_ests_new,"[",1),se=sapply(D_ests_new,"[",2))
+d_new<-data.frame(Sample=rownames(res_new),est=sapply(D_ests_new,coef),se=sapply(D_ests_new,function(x)sqrt(vcov(x))))
+
 nm_bits<-strsplit(d_new$Sample,"_")
 d_new_short_name<-paste(sapply(nm_bits,"[",1),sapply(nm_bits,"[",3),sapply(nm_bits,"[",4),sep="_")
 d_new_long_names<-d_new$Sample
+
 #write out results with no prior
 write.csv(d_new,paste0("Output/D_Score_update_no_prior",Sys.Date(),".csv"),row.names = F)
 
+
 ######stop here if no prior is being used#####
+
 #priors
 nm_bits<-strsplit(priors$Sample,"_")
 prior_short_name<-paste(sapply(nm_bits,"[",1),sapply(nm_bits,"[",3),sapply(nm_bits,"[",4),sep="_")
@@ -121,3 +123,4 @@ dat_out<-update_prior(new_dat = d_new,old_dat = new_prior)
 d_out<-dat_out[dat_out$Sample%in%d_new$Sample,]
 d_out$Sample<-d_new_long_names
 write.csv(d_out,paste0("Output/D_Score_update",Sys.Date(),".csv"),row.names = F)
+

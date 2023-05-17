@@ -27,19 +27,22 @@ names(sp_dat)
 sp_dat[sp_dat>0]<-1
 #check to make sure
 apply(sp_dat,2,max)
-###assemble training data set
+
+####assemble training data set###
 #set weights for replicated stations within year
 who<-which(table(df$Station,df$Year)[,1]>1)
 train_weights<-rep(1,dim(df)[1])
 train_weights[df$Station%in%names(who)&df$Year==2017]<-1/3
+
 #check them
 data.frame(df[,1:4],train_weights)
 
 #remove any taxa with 10 or fewer occurrences across all observations
 names(df)
-
+dim(df)
 occs<-apply(sp_dat,2,sum)
 ubiq<-names(occs[occs/dim(sp_dat)[1]>=.3])
+max(occs/dim(sp_dat)[1])
 tail(occs[order(occs)])
 lost_em<-which(occs<=10)
 #look at names of rare taxa
@@ -99,7 +102,9 @@ for(i in sp_nms){
 #calc percent deviance
 pct_deviance<-sapply(sp_nms,function(x)fts[[x]]$dev.ratio[fts[[x]]$lambda==lambda_min[x]])
 #look at the distribution of deviance explained
-hist(pct_deviance)
+
+hist(pct_deviance,xlab="Percent Devianace Explained",main="")
+abline(v=.2,lwd=2,lty=2)
 
 #grap those with pct_deviance .20 plus some special considerations
 nms<-c(names(pct_deviance[pct_deviance>=.2]),ubiq,
@@ -132,7 +137,7 @@ rownames(res)<-df_test$Sample
 for(i in nms){
   a<-pbinom(df_test[,i]-1,size = 1,predict(fts[[i]],lambda_min[i],newx=x,type="respo"))
   b<-dbinom(df_test[,i],size = 1,predict(fts[[i]],lambda_min[i],newx=x,type="respo"))
-  res[,i]<-qnorm((2*a+b)/2,0,1)
+  res[,i]<-qlogis((2*a+b)/2,0,1)
 }
 
 ####set up SEM to calculate D and alphas####
@@ -146,31 +151,32 @@ hist(res_cor)
 model<-paste("D=~NA*",paste(colnames(res),sep=" ",collapse ="+"),"\nD~~1*D",sep="")
 
 #fit the model
-fit<-sem(model,data = res,meanstructure = TRUE)
-#grab the alphas
+fit<-sem(model,data = res,meanstructure = FALSE)
 
+#grab the alphas
 #get the estimates
 alpha_est<-fit@ParTable$est[which(fit@ParTable$op=="=~")]
-#get the intercepts
-alpha_int<-head(fit@ParTable$est[which(fit@ParTable$op=="~1")],-1)
+
 #get the se 
 alpha_se<-fit@ParTable$se[which(fit@ParTable$op=="=~")]
-
 nsp<-length(nms)
 #grab the alphas
 alphas<-data.frame(names=fit@ParTable$rhs[which(fit@ParTable$op=="=~")],
-                   int=alpha_int,est=alpha_est,se=alpha_se)
+                   est=alpha_est,se=alpha_se)
 #look at them
 alphas
 
 #calculate D using maximum likelihood 
-D_ests<-list()
+wts<-1/alphas$se^2/min(1/alphas$se^2)
+
+D_ests<-D_ests_new<-list()
 len<-dim(df_test)[1]
 for(i in 1:len){
-  ll<-function(x)sum(-log(dnorm(res[i,],fit@ParTable$est[((length(fit@ParTable$est)-1)-(nsp-1)):(length(fit@ParTable$est)-1)]+fit@ParTable$est[1:nsp]*x[1],x[2])))
+  ll<-function(x)sum(-log(dlogis(res[i,],location = alphas$est*x[1],scale = x[2])),na.rm = T)
   f_tem<-optim(c(0,.3),ll,hessian = T)
   D_ests[[i]]<-c(D=f_tem$par[1],se=sqrt(diag(solve(f_tem$hessian)))[1])
-}
+  }
+
 #collect the estimates into a single data.frame
 d_ans<-data.frame(Sample=rownames(res),est=sapply(D_ests,"[",1),se=sapply(D_ests,"[",2))
 
@@ -193,11 +199,15 @@ write.csv(col_mod_vars,"Data/Model/E_calibration_means.csv",row.names = F)
 
 #prior to output folder and model data/model folder for update
 write.csv(d_ans,"Data/Model/D_ScoresPriors.csv",row.names = F)
+
 write.csv(d_ans,paste0("Output/D_Scores",Sys.Date(),".csv"),row.names = F)
 
-
-
 #create example figures and toss it in the Output folder
+nm_bits<-strsplit(d_ans$Sample,"_")
+nm_bits
+d_ans_short_name<-paste(sapply(nm_bits,"[",3),sapply(nm_bits,"[",2),sapply(nm_bits,"[",4),sep="_")
+d_ans_short_name
+d_ans$Sample<-d_ans_short_name
 source("Code/Fig_makers.R")
 pdf(paste0("Output/D_Scores",Sys.Date(),".pdf"))
 dscore_mkr(d_ans)
