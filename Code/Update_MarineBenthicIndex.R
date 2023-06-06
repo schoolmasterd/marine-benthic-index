@@ -5,7 +5,7 @@
 #set path to folders
 #This is be done automatically by starting RStudio by double clicking the Puget_Sound_MBI.Rproj
 #otherwise uncomment, update and run the following 2 lines.
-#path<-"your/path/to/Puget_Sound_MBI/"
+#path<-"your/path/to/marine-benthic-index-master/"
 setwd(path)
 
 
